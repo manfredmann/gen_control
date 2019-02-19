@@ -10,6 +10,7 @@ namespace USBErrors {
     public:
       USBTransferException(int error) {
         //this->msg = std::string(libusb_error_name(error));
+        errCode = error;
         switch(error) {
           case LIBUSB_ERROR_IO: {
             this->msg = "USB Input/output error";
@@ -67,8 +68,12 @@ namespace USBErrors {
       std::string getError() {
         return this->msg;
       }
+      int getErrorCode() {
+        return this->errCode;
+      }
     private:
       std::string msg;
+      int errCode;
   };
 
   class USBException {
@@ -76,15 +81,15 @@ namespace USBErrors {
       USBException(int error) {
         this->errCode = error;
         switch(error) {
-          case 0: {
+          case -1: {
             this->msg = "Couldn't find device";
             break;
           }
-          case 1: {
+          case -2: {
             this->msg = "Couldn't detach kernel driver";
             break;
           }
-          case 2: {
+          case -3: {
             this->msg = "Claim interface error";
             break;
           }

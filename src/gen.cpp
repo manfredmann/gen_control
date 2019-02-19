@@ -54,9 +54,20 @@ Generator::Generator() {
   srand( static_cast<unsigned int>(time(nullptr)));
 
   hndl          = nullptr;
+  context       = nullptr;
   debug         = false;
   counter_up    = static_cast<unsigned char>((rand() * 0xFF));
   counter_down  = ~counter_up;
+}
+
+Generator::~Generator() {
+  if (hndl != nullptr) {
+    libusb_close(nullptr);
+  }
+
+  if (context != nullptr) {
+    libusb_exit(context);
+  }
 }
 
 void Generator::init() {
@@ -88,23 +99,23 @@ void Generator::init() {
   libusb_free_device_list(list, static_cast<int>(devices_count));
 
   if (!is_found) {
-    throw USBErrors::USBException(0);
+    throw USBErrors::USBException(-1);
   }
 
   hndl = libusb_open_device_with_vid_pid(nullptr, 0x0957, 0x1507);
 
   if (hndl == nullptr) {
-    throw USBErrors::USBException(0);
+    throw USBErrors::USBException(-1);
   }
 
   if (libusb_kernel_driver_active(hndl, 0)) {
     if (libusb_detach_kernel_driver(hndl, 0) != 0) {
-      throw USBErrors::USBException(1);
+      throw USBErrors::USBException(-2);
     }
   }
 
   if (libusb_claim_interface(hndl, 0) < 0) {
-    throw USBErrors::USBException(2);
+    throw USBErrors::USBException(-3);
   }
 }
 
@@ -137,7 +148,7 @@ int Generator::send_raw_packet(unsigned char *data, unsigned int len) {
     }
   }
 
-  int r  = libusb_bulk_transfer(hndl, ep_in, data, int(len), &tr, 0);
+  int r  = libusb_bulk_transfer(hndl, ep_in, data, int(len), &tr, 1000);
 
   if (r != LIBUSB_SUCCESS) {
     throw USBErrors::USBTransferException(r);
@@ -162,7 +173,7 @@ int Generator::recv_raw_packet(unsigned char *data, unsigned int len) {
   if (debug)
     printf("Recv data. Len: %d\n", len);
 
-  int r = libusb_bulk_transfer(hndl, ep_out, data, int(len), &rcv, 0);
+  int r = libusb_bulk_transfer(hndl, ep_out, data, int(len), &rcv, 1000);
 
   if (r != LIBUSB_SUCCESS) {
     throw USBErrors::USBTransferException(r);
@@ -189,6 +200,11 @@ int Generator::send_packet(CommandPacket pack) {
   return send_raw_packet(pack.get_data(), static_cast<unsigned int>(pack.get_length()));
 }
 
+int Generator::send_req_packet() {
+  RequestPacket pack;
+  return send_raw_packet(pack.get_data(), static_cast<unsigned int>(pack.get_length()));
+}
+
 AnswerPacket Generator::recv_packet() {
   unsigned char *recv = new unsigned char[MAX_PACKET_SIZE];
   fill(recv, recv + MAX_PACKET_SIZE, 0);
@@ -202,105 +218,86 @@ AnswerPacket Generator::recv_packet() {
 
 
 void Generator::send_cls() {
-  unsigned char packet_1_data[] = { 0x01, 0xDE, 0xAD, 0x00, 0xDE, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00 };
-
   string cmd = "*CLS";
 
-  CommandPacket packet_cmd(packet_1_data, sizeof(packet_1_data), cmd);
+  CommandPacket packet_cmd(cmd);
   send_packet(packet_cmd);
 }
 
 string Generator::get_identifier() {
-  unsigned char packet_1_data[] = { 0x01, 0xDE, 0xAD, 0x00, 0xDE, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00 };
-  unsigned char packet_2_data[] = { 0x02, 0xBE, 0xEF, 0x00, 0xE8, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-
   string cmd = "*IDN?";
 
-  CommandPacket packet(packet_1_data, sizeof(packet_1_data), cmd);
+  CommandPacket packet(cmd);
 
   send_packet(packet);
-  send_raw_packet(packet_2_data, sizeof(packet_2_data));
+  send_req_packet();
 
   return recv_packet().get_text();
 }
 
 string Generator::get_error() {
-  unsigned char packet_1_data[] = { 0x01, 0xDE, 0xAD, 0x00, 0xDE, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00 };
-  unsigned char packet_2_data[] = { 0x02, 0xBE, 0xEF, 0x00, 0xE8, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-
   string cmd = "SYST:ERR?";
 
-  CommandPacket packet(packet_1_data, sizeof(packet_1_data), cmd);
+  CommandPacket packet(cmd);
 
   send_packet(packet);
-  send_raw_packet(packet_2_data, sizeof(packet_2_data));
+  send_req_packet();
 
   return recv_packet().get_text();
 }
 
 Waveform::Waveform Generator::get_waveform() {
-  unsigned char packet_1_data[] = { 0x01, 0xDE, 0xAD, 0x00, 0xDE, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00 };
-  unsigned char packet_2_data[] = { 0x02, 0xBE, 0xEF, 0x00, 0xE8, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-
   string cmd = "FUNC?";
 
-  CommandPacket packet_cmd(packet_1_data, sizeof(packet_1_data), cmd);
+  CommandPacket packet_cmd(cmd);
 
   send_packet(packet_cmd);
-  send_raw_packet(packet_2_data, sizeof(packet_2_data));
+  send_req_packet();
 
   return Waveform::Waveform(recv_packet().get_text());
 }
 
 void Generator::set_waveform(Waveform::Waveform waveform) {
-  string waveform_name = waveform.get_str();
-  unsigned char packet_1_data[] = { 0x01, 0xDE, 0xAD, 0x00, 0xDE, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00 };
+  string waveform_name = waveform.get_type_str();
 
   stringstream cmd_ss;
   cmd_ss << "FUNC " << waveform_name;
   string cmd = cmd_ss.str();
 
-  CommandPacket packet_cmd(packet_1_data, sizeof(packet_1_data), cmd);
+  CommandPacket packet_cmd(cmd);
 
   send_packet(packet_cmd);
 }
 
 double Generator::get_frequency() {
-  unsigned char packet_1_data[] = { 0x01, 0xDE, 0xAD, 0x00, 0xDE, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00 };
-  unsigned char packet_2_data[] = { 0x02, 0xBE, 0xEF, 0x00, 0xE8, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-
   string cmd = "FREQ?";
 
-  CommandPacket packet(packet_1_data, sizeof(packet_1_data), cmd);
+  CommandPacket packet(cmd);
 
   send_packet(packet);
-  send_raw_packet(packet_2_data, sizeof(packet_2_data));
+  send_req_packet();
 
   return exp_to_double(recv_packet().get_text());
 }
 
 void Generator::set_frequency(unsigned int hz) {
-  unsigned char packet_1_data[] = { 0x01, 0xDE, 0xAD,  0x00, 0xDE, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00};
   stringstream cmd_ss;
 
   cmd_ss << "FREQ " << to_string(hz);
   string cmd = cmd_ss.str();
 
-  CommandPacket packet(packet_1_data, sizeof(packet_1_data), cmd);
+  CommandPacket packet(cmd);
 
   send_packet(packet);
 }
 
 Amplitude::Amplitude Generator::get_amplitude() {
-  unsigned char packet_1_data[] = { 0x01, 0xDE, 0xAD, 0x00, 0xDE, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00 };
-  unsigned char packet_2_data[] = { 0x02, 0xBE, 0xEF, 0x00, 0xE8, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-
   string cmd = "VOLT?";
 
-  CommandPacket packet(packet_1_data, sizeof(packet_1_data), cmd);
+  CommandPacket packet(cmd);
 
   send_packet(packet);
-  send_raw_packet(packet_2_data, sizeof(packet_2_data));
+  send_req_packet();
 
   double ampl = exp_to_double(recv_packet().get_text());
 
@@ -308,21 +305,18 @@ Amplitude::Amplitude Generator::get_amplitude() {
 }
 
 void Generator::set_unit(string type) {
-  unsigned char packet_1_data[] = { 0x01, 0xDE, 0xAD, 0x00, 0xDE, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00 };
   string cmd = "VOLT:UNIT " + type;
 
-  CommandPacket packet(packet_1_data, sizeof(packet_1_data), cmd);
+  CommandPacket packet(cmd);
   send_packet(packet);
 }
 
 string Generator::get_voltage_unit() {
-  unsigned char packet_1_data[] = { 0x01, 0xDE, 0xAD, 0x00, 0xDE, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00 };
-  unsigned char packet_2_data[] = { 0x02, 0xDE, 0xAD, 0x00, 0xE8, 0X03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
   string cmd = "VOLT:UNIT?";
 
-  CommandPacket packet(packet_1_data, sizeof(packet_1_data), cmd);
+  CommandPacket packet(cmd);
   send_packet(packet);
-  send_raw_packet(packet_2_data, sizeof(packet_2_data));
+  send_req_packet();
 
   return recv_packet().get_text();
 }
@@ -330,45 +324,37 @@ string Generator::get_voltage_unit() {
 void Generator::set_amplitude(Amplitude::Amplitude amp) {
   this->set_unit(amp.get_type_str());
 
-  unsigned char packet_1_data[] = { 0x01, 0xDE, 0xAD, 0x00, 0xDE, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00 };
-
   stringstream cmd_ss;
   cmd_ss << "VOLT " << double_to_string(amp.get_amplitude());
   string cmd = cmd_ss.str();
 
-  CommandPacket packet(packet_1_data, sizeof(packet_1_data), cmd);
+  CommandPacket packet(cmd);
 
   send_packet(packet);
 }
 
 void Generator::set_load(int om) {
-  unsigned char packet_1_data[] = { 0x01, 0xDE, 0xAD, 0x00, 0xDE, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00 };
-
   stringstream cmd_ss;
   cmd_ss << "OUTP:LOAD " << to_string(om);
   string cmd = cmd_ss.str();
 
-  CommandPacket packet(packet_1_data, sizeof(packet_1_data), cmd);
+  CommandPacket packet(cmd);
 
   send_packet(packet);
 }
 
 double Generator::get_load() {
-  unsigned char packet_1_data[] = { 0x01, 0xDE, 0xAD, 0x00, 0xDE, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00 };
-  unsigned char packet_2_data[] = { 0x02, 0xBE, 0xEF, 0x00, 0xE8, 0x30, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-
   string cmd = "OUTP:LOAD?";
 
-  CommandPacket packet(packet_1_data, sizeof(packet_1_data), cmd);
+  CommandPacket packet(cmd);
 
   send_packet(packet);
-  send_raw_packet(packet_2_data, sizeof(packet_2_data));
+  send_req_packet();
 
   return exp_to_double(recv_packet().get_text());
 }
 
 void Generator::set_output(bool on) {
-  unsigned char packet_1_data[] = { 0x01, 0xDE, 0xAD, 0x00, 0xDE, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00 };
   string        cmd;
 
   if (on) {
@@ -377,7 +363,7 @@ void Generator::set_output(bool on) {
     cmd = "OUTP OFF";
   }
 
-  CommandPacket packet(packet_1_data, sizeof(packet_1_data), cmd);
+  CommandPacket packet(cmd);
 
   send_packet(packet);
 }

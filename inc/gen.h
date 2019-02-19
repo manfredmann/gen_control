@@ -5,7 +5,9 @@
 #include "errors.h"
 #include "waveform.h"
 #include "amplitude.h"
-#include "packet.h"
+#include "command_packet.h"
+#include "answer_packet.h"
+#include "request_packet.h"
 #include <string>
 #include <cstring>
 #include <sstream>
@@ -17,6 +19,7 @@ using namespace std;
 class Generator {
   public:
     Generator();
+    ~Generator();
 
     void                  init();
     bool                  is_init();
@@ -36,6 +39,7 @@ class Generator {
 
   private:
     libusb_device_handle  *hndl;
+    libusb_context        *context;
     const unsigned char   ep_out = 0x86;
     const unsigned char   ep_in  = 0x02;
     bool                  debug;
@@ -45,6 +49,8 @@ class Generator {
     int                   send_raw_packet(unsigned char *data, unsigned int len);
     int                   recv_raw_packet(unsigned char *data, unsigned int len);
     int                   send_packet(CommandPacket pack);
+    int                   send_req_packet();
+
     AnswerPacket          recv_packet();
     unsigned char         *recv_answ(int *recvd);
     void                  set_unit(string type);

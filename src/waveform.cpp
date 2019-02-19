@@ -24,11 +24,11 @@ Waveform::Waveform::Waveform(waveform_t val) {
   waveform = val;
 }
 
-Waveform::waveform_t Waveform::Waveform::get_val() {
+Waveform::waveform_t Waveform::Waveform::get_type() {
   return waveform;
 }
 
-string Waveform::Waveform::get_str() {
+string Waveform::Waveform::get_type_str() {
   return map[waveform];
 }
 

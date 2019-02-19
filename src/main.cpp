@@ -4,25 +4,30 @@
 
 using namespace std;
 
-cxxopts::ParseResult parse(int argc, char* argv[]) {
-  cxxopts::Options options(argv[0], " - Generator control tool");
-
-  options.add_options()
-      ("w,wave", "Wave form",     cxxopts::value<std::string>())
-      ("a,ampl", "Amplitude",     cxxopts::value<double>())
-      ("t,type", "Amplitude type", cxxopts::value<string>()->default_value("VPP"))
-      ("f,freq", "Frequency",     cxxopts::value<unsigned int>())
-      ("r,load", "Load",          cxxopts::value<unsigned int>())
-      ("o,outp", "Output enable", cxxopts::value<bool>()->default_value("false"))
-      ("debug", "Debug");
-
-  return options.parse(argc, argv);
-}
-
 int main(int argc, char *argv[]) {
   cout << std::fixed;
   try {
-    auto args = parse(argc, argv);
+    bool output_enable = false;
+
+    cxxopts::Options options(argv[0], "Generator control tool\n(c) 2019 Roman Serov <roman@serov.co>");
+
+    options.add_options()
+        ("w,wave",  "Waveform (SIN, SQU, RAMP)",      cxxopts::value<std::string>())
+        ("f,freq",  "Frequency (Hz)",                 cxxopts::value<unsigned int>())
+        ("r,load",  "Load resistance (Ohm)",          cxxopts::value<unsigned int>())
+        ("o,outp",  "Output enable",                  cxxopts::value<bool>(output_enable))
+        ("h,help",  "Print help")
+        ("debug",   "Debug");
+    options.add_options("Amplitude")
+        ("a,ampl",        "Amplitude (V)",                  cxxopts::value<double>())
+        ("t,ampl-type",   "Amplitude type (VPP, VRMS)",     cxxopts::value<string>()->default_value("VPP"));
+
+    auto args = options.parse(argc, argv);
+
+    if (args.count("h")) {
+      std::cout << options.help({"", "Amplitude"}) << std::endl;
+      exit(0);
+    }
 
     Generator gen;
 
@@ -41,7 +46,7 @@ int main(int argc, char *argv[]) {
       string              waveform_str = args["w"].as<string>();
       Waveform::Waveform  waveform(waveform_str);
 
-      cout << "Set waveform:\t\t\t\t" << waveform.get_str() << " ";
+      cout << "Set waveform:\t\t\t\t" << waveform.get_type_str() << " ";
       gen.set_waveform(waveform);
 
       cout << gen.get_error() << endl;
@@ -72,16 +77,13 @@ int main(int argc, char *argv[]) {
       cout << gen.get_error() << endl;
     }
 
-    if (args.count("o")) {
-      bool output = args["o"].as<bool>();
-      cout << "Set output enable:\t" << output << endl;
-
-      gen.set_output(output);
-    } else {
-      gen.set_output(false);
+    if (output_enable) {
+      cout << "Set output enable." << endl;
     }
 
-    cout << "Current waveform.:\t\t\t"  << gen.get_waveform().get_str() << endl;
+    gen.set_output(output_enable);
+
+    cout << "Current waveform.:\t\t\t"  << gen.get_waveform().get_type_str() << endl;
     cout << "Current freq.:\t\t"        << std::setw(15) << gen.get_frequency() << " Hz" << endl;
     Amplitude::Amplitude amp = gen.get_amplitude();
 
