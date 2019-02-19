@@ -1,14 +1,14 @@
-#ifndef COMMAND_PACKET_H
-#define COMMAND_PACKET_H
+#ifndef PACKET_COMMAND_H
+#define PACKET_COMMAND_H
 
 #include <string>
 
 using namespace std;
 
-class CommandPacket {
+class PacketCommand {
   public:
-    CommandPacket(string cmd);
-    ~CommandPacket();
+    PacketCommand(string cmd);
+    ~PacketCommand();
     unsigned long get_length();
     string        get_cmd();
     unsigned char *get_data();
@@ -19,4 +19,4 @@ class CommandPacket {
     unsigned long len;
 };
 
-#endif // COMMAND_PACKET_H
+#endif // PACKET_COMMAND_H

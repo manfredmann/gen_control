@@ -1,14 +1,14 @@
-#ifndef ANSWER_PACKET_H
-#define ANSWER_PACKET_H
+#ifndef PACKET_ANSWER_H
+#define PACKET_ANSWER_H
 
 #include <string>
 
 using namespace std;
 
-class AnswerPacket {
+class PacketAnswer {
   public:
-    AnswerPacket(unsigned char *data, unsigned long size);
-    ~AnswerPacket();
+    PacketAnswer(unsigned char *data, unsigned long size);
+    ~PacketAnswer();
     unsigned char *get_data();
     string        get_text();
     unsigned long get_length();
@@ -19,4 +19,4 @@ class AnswerPacket {
     unsigned long len;
 };
 
-#endif // ANSWER_PACKET_H
+#endif // PACKET_ANSWER_H

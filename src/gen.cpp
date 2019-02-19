@@ -56,7 +56,7 @@ Generator::Generator() {
   hndl          = nullptr;
   context       = nullptr;
   debug         = false;
-  counter_up    = static_cast<unsigned char>((rand() * 0xFF));
+  counter_up    = 0x01;
   counter_down  = ~counter_up;
 }
 
@@ -117,6 +117,8 @@ void Generator::init() {
   if (libusb_claim_interface(hndl, 0) < 0) {
     throw USBErrors::USBException(-3);
   }
+
+  set_remote();
 }
 
 bool Generator::is_init() {
@@ -196,21 +198,28 @@ int Generator::recv_raw_packet(unsigned char *data, unsigned int len) {
   return rcv;
 }
 
-int Generator::send_packet(CommandPacket pack) {
+int Generator::send_packet(PacketCommand pack) {
   return send_raw_packet(pack.get_data(), static_cast<unsigned int>(pack.get_length()));
 }
 
 int Generator::send_req_packet() {
-  RequestPacket pack;
+  PacketRequest pack;
   return send_raw_packet(pack.get_data(), static_cast<unsigned int>(pack.get_length()));
 }
 
-AnswerPacket Generator::recv_packet() {
+void Generator::set_remote() {
+  string cmd = "SYST:REMOTE";
+
+  PacketCommand packet_cmd(cmd);
+  send_packet(packet_cmd);
+}
+
+PacketAnswer Generator::recv_packet() {
   unsigned char *recv = new unsigned char[MAX_PACKET_SIZE];
   fill(recv, recv + MAX_PACKET_SIZE, 0);
 
   int r = recv_raw_packet(recv, MAX_PACKET_SIZE);
-  AnswerPacket packet(recv, static_cast<unsigned long>(r));
+  PacketAnswer packet(recv, static_cast<unsigned long>(r));
 
   delete[] recv;
   return packet;
@@ -220,14 +229,14 @@ AnswerPacket Generator::recv_packet() {
 void Generator::send_cls() {
   string cmd = "*CLS";
 
-  CommandPacket packet_cmd(cmd);
+  PacketCommand packet_cmd(cmd);
   send_packet(packet_cmd);
 }
 
 string Generator::get_identifier() {
   string cmd = "*IDN?";
 
-  CommandPacket packet(cmd);
+  PacketCommand packet(cmd);
 
   send_packet(packet);
   send_req_packet();
@@ -238,7 +247,7 @@ string Generator::get_identifier() {
 string Generator::get_error() {
   string cmd = "SYST:ERR?";
 
-  CommandPacket packet(cmd);
+  PacketCommand packet(cmd);
 
   send_packet(packet);
   send_req_packet();
@@ -249,7 +258,7 @@ string Generator::get_error() {
 Waveform::Waveform Generator::get_waveform() {
   string cmd = "FUNC?";
 
-  CommandPacket packet_cmd(cmd);
+  PacketCommand packet_cmd(cmd);
 
   send_packet(packet_cmd);
   send_req_packet();
@@ -264,7 +273,7 @@ void Generator::set_waveform(Waveform::Waveform waveform) {
   cmd_ss << "FUNC " << waveform_name;
   string cmd = cmd_ss.str();
 
-  CommandPacket packet_cmd(cmd);
+  PacketCommand packet_cmd(cmd);
 
   send_packet(packet_cmd);
 }
@@ -272,7 +281,7 @@ void Generator::set_waveform(Waveform::Waveform waveform) {
 double Generator::get_frequency() {
   string cmd = "FREQ?";
 
-  CommandPacket packet(cmd);
+  PacketCommand packet(cmd);
 
   send_packet(packet);
   send_req_packet();
@@ -286,7 +295,7 @@ void Generator::set_frequency(unsigned int hz) {
   cmd_ss << "FREQ " << to_string(hz);
   string cmd = cmd_ss.str();
 
-  CommandPacket packet(cmd);
+  PacketCommand packet(cmd);
 
   send_packet(packet);
 }
@@ -294,7 +303,7 @@ void Generator::set_frequency(unsigned int hz) {
 Amplitude::Amplitude Generator::get_amplitude() {
   string cmd = "VOLT?";
 
-  CommandPacket packet(cmd);
+  PacketCommand packet(cmd);
 
   send_packet(packet);
   send_req_packet();
@@ -307,14 +316,14 @@ Amplitude::Amplitude Generator::get_amplitude() {
 void Generator::set_unit(string type) {
   string cmd = "VOLT:UNIT " + type;
 
-  CommandPacket packet(cmd);
+  PacketCommand packet(cmd);
   send_packet(packet);
 }
 
 string Generator::get_voltage_unit() {
   string cmd = "VOLT:UNIT?";
 
-  CommandPacket packet(cmd);
+  PacketCommand packet(cmd);
   send_packet(packet);
   send_req_packet();
 
@@ -328,7 +337,7 @@ void Generator::set_amplitude(Amplitude::Amplitude amp) {
   cmd_ss << "VOLT " << double_to_string(amp.get_amplitude());
   string cmd = cmd_ss.str();
 
-  CommandPacket packet(cmd);
+  PacketCommand packet(cmd);
 
   send_packet(packet);
 }
@@ -338,7 +347,7 @@ void Generator::set_load(int om) {
   cmd_ss << "OUTP:LOAD " << to_string(om);
   string cmd = cmd_ss.str();
 
-  CommandPacket packet(cmd);
+  PacketCommand packet(cmd);
 
   send_packet(packet);
 }
@@ -346,7 +355,7 @@ void Generator::set_load(int om) {
 double Generator::get_load() {
   string cmd = "OUTP:LOAD?";
 
-  CommandPacket packet(cmd);
+  PacketCommand packet(cmd);
 
   send_packet(packet);
   send_req_packet();
@@ -363,7 +372,7 @@ void Generator::set_output(bool on) {
     cmd = "OUTP OFF";
   }
 
-  CommandPacket packet(cmd);
+  PacketCommand packet(cmd);
 
   send_packet(packet);
 }

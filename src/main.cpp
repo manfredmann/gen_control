@@ -40,7 +40,6 @@ int main(int argc, char *argv[]) {
 
     gen.get_error();
     gen.send_cls();
-    gen.get_error();
 
     if (args.count("w")) {
       string              waveform_str = args["w"].as<string>();

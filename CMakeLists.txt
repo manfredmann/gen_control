@@ -7,17 +7,17 @@ include_directories("inc/")
 set(SOURCES
     src/main.cpp
     src/gen.cpp
-    src/command_packet.cpp
-    src/answer_packet.cpp
-    src/request_packet.cpp
+    src/packet_command.cpp
+    src/packet_answer.cpp
+    src/packet_request.cpp
     src/amplitude.cpp
     src/waveform.cpp)
 set(HEADERS
     inc/errors.h
     inc/gen.h
-    inc/command_packet.h
-    inc/answer_packet.h
-    inc/request_packet.h
+    inc/packet_command.h
+    inc/packet_answer.h
+    inc/packet_request.h
     inc/amplitude.h
     inc/waveform.h)
 

@@ -1,12 +1,12 @@
-#ifndef REQUEST_PACKET_H
-#define REQUEST_PACKET_H
+#ifndef PACKET_REQUEST_H
+#define PACKET_REQUEST_H
 
 #include <cstring>
 
-class RequestPacket {
+class PacketRequest {
   public:
-    RequestPacket();
-    ~RequestPacket();
+    PacketRequest();
+    ~PacketRequest();
 
     unsigned char *get_data();
     unsigned long get_length();
@@ -16,4 +16,4 @@ class RequestPacket {
     unsigned long size;
 };
 
-#endif // REQUEST_PACKET_H
+#endif // PACKET_REQUEST_H

@@ -5,9 +5,9 @@
 #include "errors.h"
 #include "waveform.h"
 #include "amplitude.h"
-#include "command_packet.h"
-#include "answer_packet.h"
-#include "request_packet.h"
+#include "packet_command.h"
+#include "packet_answer.h"
+#include "packet_request.h"
 #include <string>
 #include <cstring>
 #include <sstream>
@@ -48,10 +48,11 @@ class Generator {
 
     int                   send_raw_packet(unsigned char *data, unsigned int len);
     int                   recv_raw_packet(unsigned char *data, unsigned int len);
-    int                   send_packet(CommandPacket pack);
+    int                   send_packet(PacketCommand pack);
     int                   send_req_packet();
+    void                  set_remote();
 
-    AnswerPacket          recv_packet();
+    PacketAnswer          recv_packet();
     unsigned char         *recv_answ(int *recvd);
     void                  set_unit(string type);
     string                get_voltage_unit();

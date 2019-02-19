@@ -1,8 +1,8 @@
-#include "answer_packet.h"
+#include "packet_answer.h"
 #include <iostream>
 #include <cstring>
 
-AnswerPacket::AnswerPacket(unsigned char *data, unsigned long size) {
+PacketAnswer::PacketAnswer(unsigned char *data, unsigned long size) {
   this->len   = size;
   this->data  = new unsigned char[size];
 
@@ -12,18 +12,18 @@ AnswerPacket::AnswerPacket(unsigned char *data, unsigned long size) {
   this->data_text = string((const char *)(data + 12));
 }
 
-AnswerPacket::~AnswerPacket() {
+PacketAnswer::~PacketAnswer() {
   //delete[] this->data;
 }
 
-unsigned char *AnswerPacket::get_data() {
+unsigned char *PacketAnswer::get_data() {
   return data;
 }
 
-string AnswerPacket::get_text() {
+string PacketAnswer::get_text() {
   return data_text;
 }
 
-unsigned long AnswerPacket::get_length() {
+unsigned long PacketAnswer::get_length() {
   return len;
 }
