@@ -36,6 +36,7 @@ class Generator {
     double                get_load();
     void                  set_output(bool on);
     void                  send_cls();
+    void                  set_text(string text);
 
   private:
     libusb_device_handle  *hndl;

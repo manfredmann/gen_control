@@ -81,8 +81,8 @@ void Generator::init() {
   bool is_found = false;
 
   for (ssize_t i = 0; i < devices_count; ++i) {
-    libusb_device *device         = list[i];
-    libusb_device_descriptor desc = { 0 };
+    libusb_device *device = list[i];
+    libusb_device_descriptor desc;
 
     int r = libusb_get_device_descriptor(device, &desc);
 
@@ -228,6 +228,13 @@ PacketAnswer Generator::recv_packet() {
 
 void Generator::send_cls() {
   string cmd = "*CLS";
+
+  PacketCommand packet_cmd(cmd);
+  send_packet(packet_cmd);
+}
+
+void Generator::set_text(string text) {
+  string cmd = "DISP:TEXT '" + text + "'";
 
   PacketCommand packet_cmd(cmd);
   send_packet(packet_cmd);
